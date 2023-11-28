@@ -47,16 +47,16 @@ license:
 
 _pack_limine: _install_limine
   @echo Copying bootloader files...
-  @mkdir -p disk/boot
-  cp deps/limine/limine-uefi-cd.bin deps/limine/limine-bios-cd.bin deps/limine/limine-bios.sys disk/boot
-  cp bootloader/limine/limine.cfg disk/boot
+  @mkdir -p disk/limine
+  cp deps/limine/limine-uefi-cd.bin deps/limine/limine-bios-cd.bin deps/limine/limine-bios.sys disk/limine
+  cp bootloader/limine/limine.cfg disk/limine
   @mkdir -p disk/EFI/BOOT
   cp deps/limine/BOOTAA64.EFI deps/limine/BOOTRISCV64.EFI deps/limine/BOOTX64.EFI disk/EFI/BOOT
 
   @echo Creating ISO image
-  xorriso -as mkisofs -b boot/limine-bios-cd.bin \
+  xorriso -as mkisofs -b limine/limine-bios-cd.bin \
           -no-emul-boot -boot-load-size 4 -boot-info-table \
-          --efi-boot boot/limine-uefi-cd.bin \
+          --efi-boot limine/limine-uefi-cd.bin \
           -efi-boot-part --efi-boot-image --protective-msdos-label \
           disk -o microdragon.iso
   {{ if os() == "windows" { "./deps/limine/limine.exe" } else { "./deps/limine/limine" } }} bios-install microdragon.iso

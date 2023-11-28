@@ -36,6 +36,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
+name = "bootloader_api"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88f843888771a490c3ad246e58bf25e62da70d2c653d74a3eca92acbab599e02"
+
+[[package]]
 name = "common"
 version = "0.0.0"
 dependencies = [
@@ -86,6 +92,7 @@ version = "0.0.0"
 name = "kmm"
 version = "0.0.0"
 dependencies = [
+ "bootloader_api",
  "common",
  "interface",
  "limine",
@@ -147,6 +154,14 @@ name = "microdragon-limine"
 version = "0.0.0"
 dependencies = [
  "limine",
+ "runner",
+]
+
+[[package]]
+name = "microdragon-rust"
+version = "0.0.0"
+dependencies = [
+ "bootloader_api",
  "runner",
 ]
 
