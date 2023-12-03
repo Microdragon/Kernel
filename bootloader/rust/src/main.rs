@@ -10,22 +10,23 @@ mod memory;
 mod stack;
 
 use bootloader_api::config::Mapping;
-use bootloader_api::{BootInfo, BootloaderConfig};
+use bootloader_api::{entry_point, BootInfo, BootloaderConfig};
 use core::arch::asm;
 use runner::interface::{ModuleInterface, PRIMARY_STACK_SIZE};
 
-#[link_section = ".bootloader-config"]
-pub static BOOTLOADER_CONFIG: [u8; BootloaderConfig::SERIALIZED_LEN] = {
+static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
 
     config.kernel_stack_size = PRIMARY_STACK_SIZE as u64;
-    config.mappings.physical_memory = Some(Mapping::FixedAddress(0));
+    //config.mappings.physical_memory = Some(Mapping::FixedAddress(0));
     config.mappings.aslr = cfg!(not(debug_assertions));
 
-    config.serialize()
+    config
 };
 
-pub extern "C" fn _start(info: &'static mut BootInfo) -> ! {
+entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
+
+pub fn kernel_main(info: &'static mut BootInfo) -> ! {
     let stack_top: u64;
     unsafe {
         asm!(
