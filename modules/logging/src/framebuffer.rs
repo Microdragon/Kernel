@@ -1,13 +1,14 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
-use common::addr::{PhysAddr, VirtAddr};
+use common::addr::PhysAddr;
 use common::memory::physical_to_virtual;
+use core::ptr;
 
 pub const LINE_SPACING: usize = 2;
 
 pub struct Framebuffer {
-    buffer: VirtAddr,
+    buffer: *mut u8,
     size: usize,
     red_shift: u8,
     green_shift: u8,
@@ -18,7 +19,7 @@ pub struct Framebuffer {
 
 impl Framebuffer {
     pub fn new(
-        buffer: VirtAddr,
+        buffer: *mut u8,
         size: usize,
         red_shift: u8,
         green_shift: u8,
@@ -39,8 +40,8 @@ impl Framebuffer {
 
     /// Updates the buffer address to the new memory model.
     pub fn rewire(&mut self) {
-        let ptr = PhysAddr::new_truncate(self.buffer.as_u64());
-        self.buffer = physical_to_virtual(ptr);
+        let ptr = PhysAddr::new_truncate(self.buffer as u64);
+        self.buffer = physical_to_virtual(ptr).as_mut_ptr::<u8>();
     }
 
     /// Encodes a red, green and blue color value into a combined [`u32`].
@@ -55,65 +56,24 @@ impl Framebuffer {
     /// The color needs to be encoded with `encode_color` first.
     pub fn set_pixel(&mut self, x: usize, y: usize, color: u32) {
         let index = (y * self.pitch as usize) + (x * 4);
-        debug_assert!(index < self.size, "Trying to set pixel out of bounds");
+        let color = color.to_ne_bytes();
 
-        unsafe {
-            (self.buffer + index)
-                .as_mut_ptr::<u32>()
-                .write_volatile(color)
-        };
+        unsafe { ptr::copy_nonoverlapping(color.as_ptr(), self.buffer.add(index), color.len()) };
     }
 
-    /// Sets all pixels starting at the given coordinates until the end of the buffer to the given color.
-    pub fn set_pixels(&mut self, x: usize, y: usize, color: u32) {
-        let start = (y * self.pitch as usize) + (x * 4);
-        debug_assert!(start < self.size, "Trying to set pixel out of bounds");
-        debug_assert!(
-            ((self.size - start) % 4) == 0,
-            "pixel range must be u32 aligned"
-        );
-
-        for offset in (start..self.size).step_by(4) {
-            unsafe {
-                (self.buffer + offset)
-                    .as_mut_ptr::<u32>()
-                    .write_volatile(color)
-            };
-        }
+    /// Sets all pixels starting at the given y coordinates until the end of the buffer to the default background color.
+    pub fn clear_pixels(&mut self, y: usize) {
+        let y = y * self.pitch as usize;
+        unsafe { ptr::write_bytes(self.buffer.add(y), 12, self.size - y) };
     }
 
     /// Copies the given amount of pixels at index `from` to index `to`.
-    pub fn copy_pixels(
-        &mut self,
-        from_x: usize,
-        from_y: usize,
-        to_x: usize,
-        to_y: usize,
-        size: usize,
-    ) {
-        let from = (from_y * self.pitch as usize) + (from_x * 4);
-        let to = (to_y * self.pitch as usize) + (to_x * 4);
+    pub fn copy_pixels(&mut self, from_y: usize, to_y: usize, size: usize) {
+        let from_y = from_y * self.pitch as usize;
+        let to_y = to_y * self.pitch as usize;
         let size = size * self.pitch as usize;
-
-        debug_assert!(
-            (from + size) < self.size,
-            "Trying to set pixel out of bounds"
-        );
-        debug_assert!((to + size) < self.size, "Trying to set pixel out of bounds");
-        debug_assert!((size % 4) == 0, "pixel range must be u32 aligned");
-
-        for offset in (0..size).step_by(4) {
-            let color = unsafe {
-                (self.buffer + from + offset)
-                    .as_mut_ptr::<u32>()
-                    .read_volatile()
-            };
-
-            unsafe {
-                (self.buffer + to + offset)
-                    .as_mut_ptr::<u32>()
-                    .write_volatile(color)
-            };
-        }
+        unsafe { ptr::copy(self.buffer.add(from_y), self.buffer.add(to_y), size) };
     }
 }
+
+unsafe impl Send for Framebuffer {}
