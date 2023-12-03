@@ -4,9 +4,10 @@
 use crate::escape::EscapeSequence;
 use crate::framebuffer::{Framebuffer, LINE_SPACING};
 use crate::position::Position;
+use crate::theme;
+use common::addr::VirtAddr;
 use common::sync::{Spinlock, SyncLazy};
 use core::fmt::Write;
-use core::{ptr, slice};
 use interface::FramebufferInfo;
 use noto_sans_mono_bitmap::{
     get_raster, get_raster_width, FontWeight, RasterHeight, RasterizedChar,
@@ -49,22 +50,25 @@ impl TerminalOutput {
             | ((u8::MAX as u32) << info.green_mask_shift)
             | ((u8::MAX as u32) << info.blue_mask_shift);
 
-        // memset the buffer to `12`
-        // SAFETY: we assume the size and address given by the bootloader is correct and alignment isn't a concern with u8s
-        unsafe { ptr::write_bytes(info.address, 12, info.size) };
-
-        // and initialize the framebuffer
-        // SAFETY: See above with `write_bytes`. In addition, initialize is only run once,
-        // since buffer is set after this line, preventing subsequent runs.
-        // This means there will only be one instance of this slice in the whole program.
-        self.framebuffer = Some(Framebuffer::new(
-            unsafe { slice::from_raw_parts_mut(info.address, info.size) },
+        let mut fb = Framebuffer::new(
+            VirtAddr::new_const(info.address as u64),
+            info.size,
             info.red_mask_shift,
             info.green_mask_shift,
             info.blue_mask_shift,
             !mask,
             info.pitch,
-        ));
+        );
+
+        // memset the buffer to `12`
+        // SAFETY: we assume the size and address given by the bootloader is correct and alignment isn't a concern with u8s
+        fb.set_pixels(0, 0, fb.encode_color(theme::DEFAULT_BG_COLOR));
+
+        // and initialize the framebuffer
+        // SAFETY: See above with `write_bytes`. In addition, initialize is only run once,
+        // since buffer is set after this line, preventing subsequent runs.
+        // This means there will only be one instance of this slice in the whole program.
+        self.framebuffer = Some(fb);
 
         // Calculate the max rows and columns we have.
         self.position.set_limits(
@@ -113,7 +117,19 @@ impl TerminalOutput {
     fn newline(&mut self) {
         if self.position.newline() {
             if let Some(fb) = &mut self.framebuffer {
-                fb.scroll(self.position.max_columns())
+                let end = self.position.max_columns() - 1;
+                fb.copy_pixels(
+                    0,
+                    BORDER_PADDING + RASTER_HEIGHT.val() + LINE_SPACING,
+                    0,
+                    BORDER_PADDING,
+                    end * (RASTER_HEIGHT.val() + LINE_SPACING),
+                );
+                fb.set_pixels(
+                    0,
+                    BORDER_PADDING + (end * (RASTER_HEIGHT.val() + LINE_SPACING)),
+                    fb.encode_color(theme::DEFAULT_BG_COLOR),
+                );
             }
         }
     }
