@@ -1,11 +1,13 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 use crate::utils::CommandContext;
 use color_eyre::Result;
 use ignore::overrides::{Override, OverrideBuilder};
 use ignore::types::TypesBuilder;
 use ignore::{WalkBuilder, WalkState};
+use log::{info, warn};
 use std::fs;
 use std::path::Path;
 
@@ -14,6 +16,7 @@ const LICENSE_DETECT_STRING: &str =
 const LICENSE_TEXT: &str = r"// This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 ";
 
 pub fn run(ctx: CommandContext) -> Result<()> {
@@ -40,7 +43,7 @@ pub fn run(ctx: CommandContext) -> Result<()> {
             let mut content = match fs::read_to_string(entry.path()) {
                 Ok(content) => content,
                 Err(err) => {
-                    println!("Could not read {}: {err}", entry.path().display());
+                    warn!("Could not read {}: {err}", entry.path().display());
                     return WalkState::Continue;
                 }
             };
@@ -49,9 +52,9 @@ pub fn run(ctx: CommandContext) -> Result<()> {
                 content.insert_str(0, LICENSE_TEXT);
 
                 match fs::write(entry.path(), content) {
-                    Ok(()) => println!("Updated: {}", entry.path().display()),
+                    Ok(()) => info!("Updated: {}", entry.path().display()),
                     Err(err) => {
-                        println!("Could not update {}: {err}", entry.path().display());
+                        warn!("Could not update {}: {err}", entry.path().display());
                         return WalkState::Continue;
                     }
                 }

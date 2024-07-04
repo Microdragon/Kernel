@@ -1,13 +1,14 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 use crate::escape::EscapeSequence;
 use crate::framebuffer::{Framebuffer, LINE_SPACING};
 use crate::position::Position;
 use common::sync::{Spinlock, SyncLazy};
 use core::fmt::Write;
-use core::ptr;
-use interface::FramebufferInfo;
+use core::ptr::NonNull;
+use microdragon_interface::framebuffer::FramebufferInfo;
 use noto_sans_mono_bitmap::{
     get_raster, get_raster_width, FontWeight, RasterHeight, RasterizedChar,
 };
@@ -37,35 +38,34 @@ impl TerminalOutput {
 
     /// Initializes the terminal output.
     /// This can only be called onces, subsequent calls do nothing.
-    pub fn init(&mut self, info: &FramebufferInfo) {
+    pub fn init(&mut self, info: &FramebufferInfo, address: NonNull<u32>) {
         // Check if buffer is already set and do nothing if so.
         if self.framebuffer.is_some() {
             return;
         }
 
-        // Calculate a mask of all color channels.
-        // The bitwise not gives us a mask of reserved bits.
-        let mask = ((u8::MAX as u32) << info.red_mask_shift)
-            | ((u8::MAX as u32) << info.green_mask_shift)
-            | ((u8::MAX as u32) << info.blue_mask_shift);
+        let size = info.height * info.pitch;
+        debug_assert!(
+            info.size as u64 >= size,
+            "Provided buffer size is too small"
+        );
 
-        // memset the buffer to `12`
-        // SAFETY: we assume the size and address given by the bootloader is correct and alignment isn't a concern with u8s
-        unsafe { ptr::write_bytes(info.address, 12, info.size) };
-
-        // and initialize the framebuffer
-        // SAFETY: See above with `write_bytes`. In addition, initialize is only run once,
-        // since buffer is set after this line, preventing subsequent runs.
-        // This means there will only be one instance of this slice in the whole program.
-        self.framebuffer = Some(Framebuffer::new(
-            info.address,
-            info.size,
+        // Create framebuffer struct,
+        let mut fb = Framebuffer::new(
+            address,
+            size as usize,
             info.red_mask_shift,
             info.green_mask_shift,
             info.blue_mask_shift,
-            !mask,
-            info.pitch,
-        ));
+            info.width as usize,
+            info.pitch as usize,
+        );
+
+        // clear the framebuffer
+        fb.clear_pixels(0);
+
+        // and set it in the terminal output struct.
+        self.framebuffer = Some(fb);
 
         // Calculate the max rows and columns we have.
         self.position.set_limits(

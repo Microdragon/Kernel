@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Remote attach",
+            "type": "lldb",
+            "request": "custom",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/target/sysroot/system/kernel"
+            ],
+            "processCreateCommands": [
+                "gdb-remote localhost:1234",
+                "c"
+            ]
+        }
+    ]
+}

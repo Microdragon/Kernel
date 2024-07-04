@@ -1,7 +1,8 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
-use runner::interface::{StackInfo, PRIMARY_STACK_SIZE, SECONDARY_STACK_SIZE};
+
+use microdragon_interface::stack::{StackInfo, PRIMARY_STACK_SIZE, SECONDARY_STACK_SIZE};
 
 /// The kernel's primary stack for the bootstrap processor.
 static mut BOOTSTRAP_PRIMARY_STACK: &mut [u8] = &mut [0; PRIMARY_STACK_SIZE];

@@ -1,6 +1,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 use super::Dependency;
 use color_eyre::Result;
 use xshell::{cmd, Shell};
@@ -41,7 +42,9 @@ impl Dependency for GitDependency {
         let cmd = cmd!(sh, "git pull --depth=1");
 
         if let Some(post_install) = self.post_install {
+            println!("$ {cmd}");
             let output = cmd.read()?;
+            println!("{}", output);
             if !output.contains("Already up to date.") {
                 let dir = sh.push_dir(self.id);
                 post_install(sh)?;

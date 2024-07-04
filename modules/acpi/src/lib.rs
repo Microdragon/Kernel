@@ -19,6 +19,7 @@ mod utils;
 
 pub use header::*;
 pub use hpet::*;
+use microdragon_interface::macros::init;
 pub use table::*;
 pub use utils::*;
 
@@ -28,8 +29,8 @@ use common::memory::physical_to_virtual;
 use common::sync::SyncOnceCell;
 use core::mem;
 use core::slice;
-use interface::ModuleInterface;
 use log::{debug, info, log_enabled, warn, Level};
+use microdragon_interface::ModuleInterface;
 
 /// Signature of the Extended System Descriptor Table used in ACPI 2.0+.
 /// It uses 64-bit pointers, so we have to detect that and choose accordingly.
@@ -40,17 +41,18 @@ const EXTENDED_SIGNATURE: &[u8] = b"XSDT";
 static SYSTEM_DESCRIPTOR_TABLE: SyncOnceCell<&'static AcpiTableHeader> = SyncOnceCell::new();
 
 /// Entrypoint to the ACPI module.
-pub fn init(iface: &ModuleInterface) {
+#[init]
+pub fn init(interface: &ModuleInterface) {
     if SYSTEM_DESCRIPTOR_TABLE.is_initialized() {
         warn!("ACPI Kernel Module already initialized");
         return;
     }
 
-    if iface.rsdp_address == 0 {
+    if interface.rsdp_address == 0 {
         info!("ACPI not available");
         return;
     }
-    let address = PhysAddr::new_truncate(iface.rsdp_address);
+    let address = PhysAddr::new_truncate(interface.rsdp_address);
 
     // Safety: We assume the address given by the interface is valid.
     let Some(address) = rsdp::read(physical_to_virtual(address)) else {

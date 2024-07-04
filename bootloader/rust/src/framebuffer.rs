@@ -1,24 +1,29 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 use bootloader_api::info::{Optional, PixelFormat};
 use bootloader_api::BootInfo;
-use runner::interface::FramebufferInfo;
+use microdragon_interface::framebuffer::FramebufferInfo;
 
-pub fn get_framebuffer_info(info: &mut BootInfo) -> Option<FramebufferInfo> {
+pub fn get_framebuffer_info(info: &mut BootInfo) -> FramebufferInfo {
     let fb = match &mut info.framebuffer {
         Optional::Some(x) => x,
-        Optional::None => return None,
+        Optional::None => return FramebufferInfo::default(),
     };
 
     if fb.info().bytes_per_pixel != 32 {
-        return None;
+        return FramebufferInfo::default();
     }
 
-    let (red_mask_shift, green_mask_shift, blue_mask_shift) = as_shifts(&fb.info().pixel_format)?;
+    let (red_mask_shift, green_mask_shift, blue_mask_shift) =
+        match as_shifts(&fb.info().pixel_format) {
+            Some(x) => x,
+            None => return FramebufferInfo::default(),
+        };
 
-    Some(FramebufferInfo {
-        address: fb.buffer_mut().as_mut_ptr(),
+    FramebufferInfo {
+        address: fb.buffer_mut().as_mut_ptr() as u64,
         size: fb.info().byte_len,
         width: fb.info().width as u64,
         height: fb.info().height as u64,
@@ -26,7 +31,7 @@ pub fn get_framebuffer_info(info: &mut BootInfo) -> Option<FramebufferInfo> {
         red_mask_shift,
         green_mask_shift,
         blue_mask_shift,
-    })
+    }
 }
 
 const fn as_shifts(format: &PixelFormat) -> Option<(u8, u8, u8)> {

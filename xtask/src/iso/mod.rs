@@ -1,14 +1,16 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
-mod limine;
 
 use crate::arguments::Bootloader;
-use crate::build::{self, BuildArguments};
+use crate::build::BuildArguments;
 use crate::utils::CommandContext;
 use clap::Args;
 use color_eyre::eyre::anyhow;
 use color_eyre::Result;
+use log::info;
+
+mod limine;
 
 /// Builds the microdragon kernel and packs it into an iso
 ///
@@ -21,9 +23,9 @@ pub struct IsoArguments {
 
 impl IsoArguments {
     pub fn run(self, mut ctx: CommandContext) -> Result<()> {
-        self.build.run()?;
+        self.build.run(&ctx)?;
 
-        println!("Collecting files...");
+        info!("Collecting files...");
         match self.build.bootloader {
             Bootloader::Limine => limine::copy_files(&mut ctx, self.build.target)?,
             Bootloader::Rust => {
@@ -33,12 +35,9 @@ impl IsoArguments {
             }
         }
 
-        build::copy_kernel_binary(&mut ctx, &self.build)?;
+        self.build.copy_kernel_binary(&ctx)?;
 
-        let tmp = ctx.shell().create_temp_dir()?;
-        ctx.file_system().write_to_path(tmp.path())?;
-
-        println!("Creating iso...");
+        info!("Creating iso...");
         let iso = ctx.target_directory().join("microdragon.iso");
         ctx.shell()
             .cmd("xorriso")
@@ -46,7 +45,7 @@ impl IsoArguments {
                 Bootloader::Limine => limine::XORRISO_ARGUMENTS,
                 Bootloader::Rust => unreachable!(),
             })
-            .arg(tmp.path())
+            .arg(ctx.sysroot_directory())
             .arg("-o")
             .arg(&iso)
             .run()?;

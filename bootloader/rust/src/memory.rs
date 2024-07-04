@@ -1,9 +1,10 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 use bootloader_api::BootInfo;
 use core::arch::x86_64::__cpuid;
-use runner::interface::{MemoryInfo, MemoryMapInfo, MemoryMapType};
+use microdragon_interface::memory::{MemoryInfo, MemoryMapInfo, MemoryMapType};
 
 pub fn get_memory_map_info(info: &BootInfo) -> MemoryMapInfo {
     MemoryMapInfo {

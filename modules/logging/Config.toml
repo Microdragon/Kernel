@@ -1,0 +1,21 @@
+[theme]
+default_fg = 0xCCCCCC
+default_bg = 0x0C0C0C
+
+black = 0x0C0C0C
+red = 0xC50F1E
+green = 0x13A10E
+yellow = 0xC19A00
+blue = 0x0037DA
+magenta = 0x891798
+cyan = 0x3A96DD
+white = 0xCCCCCC
+
+bright_black = 0x767676
+bright_red = 0xE74855
+bright_green = 0x15C60C
+bright_yellow = 0xF9F1A5
+bright_blue = 0x3B79FF
+bright_magenta = 0xB4009F
+bright_cyan = 0x61D6D6
+bright_white = 0xF2F2F2

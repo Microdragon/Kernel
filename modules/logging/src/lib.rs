@@ -1,6 +1,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 //! # Microdragon Logging Module
 //!
 //! The logging system provides an implementation for the `log` crate for the rest of the kernel to use.
@@ -15,20 +16,25 @@
 //! (TODO: Make logging configurable)
 #![no_std]
 
+#[cfg(feature = "terminal")]
 mod escape;
+#[cfg(feature = "terminal")]
 mod framebuffer;
+#[cfg(feature = "terminal")]
 mod position;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", feature = "serial"))]
 mod serial;
+#[cfg(feature = "terminal")]
 mod terminal;
+#[cfg(feature = "terminal")]
 mod theme;
 
-use crate::terminal::TERMINAL_OUTPUT;
 use common::interrupts;
 use common::sync::Spinlock;
 use core::fmt::Write;
-use interface::ModuleInterface;
 use log::{info, Level, LevelFilter, Log, Metadata, Record};
+use microdragon_interface::macros::init;
+use microdragon_interface::ModuleInterface;
 
 /// The central [`log::Log`] implementation.
 /// There can only be one active Log implementation,
@@ -56,9 +62,10 @@ impl Log for LoggingSubsystem {
         let _guard = interrupts::disable();
 
         // Write to logger outputs.
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", feature = "serial"))]
         write_to_output(&serial::SERIAL_PORT_OUTPUT, level, record);
-        write_to_output(&TERMINAL_OUTPUT, level, record);
+        #[cfg(feature = "terminal")]
+        write_to_output(&terminal::TERMINAL_OUTPUT, level, record);
     }
 
     fn flush(&self) {}
@@ -68,13 +75,17 @@ static INSTANCE: LoggingSubsystem = LoggingSubsystem;
 
 /// Initializes the logging module.
 /// Interrupts should still be disables while this is run.
-pub fn init(iface: &ModuleInterface) {
+#[init]
+pub fn init(interface: &ModuleInterface) {
     // Run the initialization sequence for the logging outputs.
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", feature = "serial"))]
     serial::SERIAL_PORT_OUTPUT.lock().init();
 
-    if let Some(fb) = &iface.framebuffer_info {
-        TERMINAL_OUTPUT.lock().init(fb);
+    #[cfg(feature = "terminal")]
+    if let Some(address) = core::ptr::NonNull::new(interface.framebuffer_info.address as *mut u32) {
+        terminal::TERMINAL_OUTPUT
+            .lock()
+            .init(&interface.framebuffer_info, address);
     }
 
     // Set global Log implementation.
@@ -90,8 +101,10 @@ pub fn init(iface: &ModuleInterface) {
 }
 
 /// Called after the kernel memory manager (KMM) has been initialized to correct the physical to virtual address mapping.
-pub fn rewire() {
-    TERMINAL_OUTPUT.lock().rewire();
+#[cfg(feature = "terminal")]
+#[init]
+pub fn rewire(_: &ModuleInterface) {
+    // terminal::TERMINAL_OUTPUT.lock().rewire();
 
     info!("Logging rewired");
 }

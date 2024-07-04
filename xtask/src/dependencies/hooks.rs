@@ -1,7 +1,9 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 use color_eyre::Result;
+use log::info;
 use std::fs;
 use std::path::Path;
 use xshell::{cmd, Shell};
@@ -21,7 +23,7 @@ pub fn build_limine(sh: &Shell) -> Result<()> {
 }
 
 pub fn extract_omvf(tar: &Path, sh: &Shell) -> Result<()> {
-    println!("Extracting OVMF...");
+    info!("Extracting OVMF...");
     cmd!(sh, "tar xvf {tar}").run()?;
     sh.remove_path(tar)?;
 

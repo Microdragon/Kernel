@@ -9,14 +9,16 @@ mod framebuffer;
 mod memory_map;
 mod stack;
 
-use runner::interface::ModuleInterface;
+use microdragon_interface::ModuleInterface;
+
+microdragon_interface::macros::include_runner!();
 
 /// Entrypoint for the kernel.
 /// - Creates the module interface.
 /// - Runs the module runner.
 /// - Starts the service stack.
 fn kernel_main() -> ! {
-    let iface = ModuleInterface {
+    let interface = ModuleInterface {
         stack_info: stack::get_stack_info(),
         rsdp_address: acpi::get_rsdp_address(),
         framebuffer_info: framebuffer::get_framebuffer_info(),
@@ -24,8 +26,15 @@ fn kernel_main() -> ! {
         memory_info: memory_map::get_memory_info(),
     };
 
-    runner::run_modules(&iface);
+    run_modules(&interface);
 
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+#[panic_handler]
+fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     loop {
         core::hint::spin_loop();
     }

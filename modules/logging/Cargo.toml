@@ -4,9 +4,20 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
+[features]
+default = ["terminal", "serial"]
+terminal = []
+serial = []
+
 [dependencies]
-interface = { path = "../interface" }
+microdragon_interface = { path = "../../crates/interface" }
 common = { path = "../../crates/common" }
-uart_16550 = { workspace = true }
 log = { workspace = true }
-noto-sans-mono-bitmap = { workspace = true }
+uart_16550 = "0.3.0"
+noto-sans-mono-bitmap = "0.3.0"
+
+[package.metadata.microdragon]
+constructors = [
+    { path = "init", order = 100 },
+    { path = "rewire", order = 1000 },
+]

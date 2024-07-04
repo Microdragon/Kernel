@@ -1,9 +1,8 @@
 [package]
-name = "common"
+name = "microdragon_interface"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
 [dependencies]
-spinning_top = "0.3.0"
-interrupts = "0.1.5"
+microdragon_macros = { path = "../macros" }

@@ -1,6 +1,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 #![no_std]
 #![no_main]
 
@@ -9,10 +10,10 @@ mod framebuffer;
 mod memory;
 mod stack;
 
-use bootloader_api::config::Mapping;
 use bootloader_api::{entry_point, BootInfo, BootloaderConfig};
 use core::arch::asm;
-use runner::interface::{ModuleInterface, PRIMARY_STACK_SIZE};
+use microdragon_interface::stack::PRIMARY_STACK_SIZE;
+use microdragon_interface::ModuleInterface;
 
 static BOOTLOADER_CONFIG: BootloaderConfig = {
     let mut config = BootloaderConfig::new_default();
@@ -26,6 +27,8 @@ static BOOTLOADER_CONFIG: BootloaderConfig = {
 
 entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
+microdragon_interface::macros::include_runner!();
+
 pub fn kernel_main(info: &'static mut BootInfo) -> ! {
     let stack_top: u64;
     unsafe {
@@ -36,7 +39,7 @@ pub fn kernel_main(info: &'static mut BootInfo) -> ! {
         )
     };
 
-    let iface = ModuleInterface {
+    let interface = ModuleInterface {
         stack_info: stack::get_stack_info(stack_top),
         rsdp_address: acpi::get_rsdp_address(info),
         framebuffer_info: framebuffer::get_framebuffer_info(info),
@@ -44,7 +47,7 @@ pub fn kernel_main(info: &'static mut BootInfo) -> ! {
         memory_info: memory::get_memory_info(),
     };
 
-    runner::run_modules(&iface);
+    run_modules(&interface);
 
     loop {
         core::hint::spin_loop();
